@@ -14,8 +14,6 @@ const dynamoClient = DynamoDBDocumentClient.from(
   })
 );
 
-process.env.TABLE_NAME = "quiz-game-leaderboard";
-
 export interface SubmitScoreParams {
   username: string;
   score: number;
