@@ -284,19 +284,21 @@ function SubmitScore(props: SubmitScoreProps) {
           name="username"
           className="border-gray-500 border-1 font-mono placeholder:italic"
         />
-        <SubmitButton />
+        <SubmitButton disabled={username === ""} />
       </div>
     </form>
   );
 }
 
-function SubmitButton() {
+function SubmitButton(props: { disabled: boolean }) {
+  const { disabled } = props;
+
   const { pending } = useFormStatus();
 
   return (
     <>
       <button
-        disabled={pending}
+        disabled={disabled || pending}
         type="submit"
         className="font-mono border-1 p-1 border-green-700 hover:bg-gray-900 transition-all hover:cursor-pointer disabled:border-green-900 disabled:text-gray-600 disabled:cursor-default"
       >
