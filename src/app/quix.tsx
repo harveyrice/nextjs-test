@@ -1,0 +1,307 @@
+"use client";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import data from "./countries.json";
+import { useFormStatus } from "react-dom";
+import type { SubmitScoreParams } from "./actions";
+
+export interface Question {
+  question: string;
+  answer: string;
+  image?: React.ReactNode;
+  options?: string[];
+}
+
+interface Category {
+  title: string;
+  generator: () => Question;
+  selected: boolean;
+}
+
+function getRandomOptions(
+  correctAnswer: string,
+  allAnswers: string[],
+  count: number = 3
+): string[] {
+  const otherAnswers = allAnswers.filter((a) => a !== correctAnswer);
+  const shuffled = otherAnswers.sort(() => Math.random() - 0.5);
+  const options = [correctAnswer, ...shuffled.slice(0, count - 1)];
+  return options.sort(() => Math.random() - 0.5);
+}
+
+function capital(): Question {
+  const country = data[Math.floor(Math.random() * data.length)];
+  const allCapitals = data.map((c) => c.capital);
+  return {
+    question: `Capital of ${country.name}?`,
+    answer: country.capital,
+    options: getRandomOptions(country.capital, allCapitals, 4),
+  };
+}
+
+function codeToEmoji(code: string): string {
+  return code
+    .toUpperCase()
+    .replace(/./g, (char) => String.fromCodePoint(char.charCodeAt(0) + 127397));
+}
+
+function flag(): Question {
+  const country = data[Math.floor(Math.random() * data.length)];
+  const flagEmoji = codeToEmoji(country.country_code);
+  const allCountries = data.map((c) => c.name);
+  return {
+    question: `What country is this?`,
+    answer: country.name,
+    image: flagEmoji,
+    options: getRandomOptions(country.name, allCountries, 4),
+  };
+}
+
+function flagToCapital(): Question {
+  const country = data[Math.floor(Math.random() * data.length)];
+  const flagEmoji = codeToEmoji(country.country_code);
+  const allCapitals = data.map((c) => c.capital);
+  return {
+    question: `What is the capital of this country?`,
+    image: flagEmoji,
+    answer: country.capital,
+    options: getRandomOptions(country.capital, allCapitals, 4),
+  };
+}
+
+function randomInt(max: number) {
+  return Math.floor(Math.random() * max);
+}
+
+function sum(): Question {
+  const a = randomInt(10);
+  const b = randomInt(10);
+
+  return {
+    question: `${a} + ${b} = ?`,
+    answer: (a + b).toString(),
+  };
+}
+
+const initialCategories: Category[] = [
+  {
+    title: "Sums",
+    generator: sum,
+    selected: true,
+  },
+  {
+    title: "Flags",
+    generator: flag,
+    selected: true,
+  },
+  {
+    title: "Capitals",
+    generator: capital,
+    selected: true,
+  },
+  {
+    title: "Capitals from Flags",
+    generator: flagToCapital,
+    selected: true,
+  },
+];
+
+function normalise(a: string) {
+  // Ignore case and diacritics.
+  return a
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function sameString(a: string, b: string) {
+  return normalise(a) === normalise(b);
+}
+
+function resultToBackgroundStyle(result?: string) {
+  if (!result) {
+    return "from-transparent to-transparent";
+  }
+  if (result.startsWith("✅")) {
+    return "from-gray-900 to-green-900";
+  } else {
+    return "from-gray-900 to-red-900";
+  }
+}
+
+function getQuestion(categories: Category[]) {
+  const selected = categories.filter(({ selected }) => selected);
+  return selected[randomInt(selected.length)].generator();
+}
+
+export interface QuizProps {
+  submitScore: (params: SubmitScoreParams) => Promise<void>;
+}
+
+export function Quiz(props: QuizProps) {
+  const [question, setQuestion] = useState<Question | null>(null);
+  const [points, setPoints] = useState(0);
+  const [guess, setGuess] = useState<string>("");
+  const [result, setResult] = useState<"✅" | "❌" | string | undefined>(
+    undefined
+  );
+  const [categories, setCategories] = useState(initialCategories);
+  const [showOptions, setShowOptions] = useState(false);
+
+  useEffect(() => {
+    setQuestion(() => getQuestion(initialCategories));
+  }, []);
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setGuess(event.target.value);
+    },
+    []
+  );
+
+  const timeoutRef = useRef<null | number>(null);
+
+  const submitGuess = useCallback(() => {
+    if (!question) {
+      return;
+    }
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+    }
+    if (sameString(guess, question.answer)) {
+      setPoints((points) => points + 1);
+      setResult("✅");
+    } else {
+      setPoints((points) => points - 1);
+      setResult(`❌ ${question.answer}`);
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
+      setResult(undefined);
+    }, 2000);
+
+    setQuestion(getQuestion(categories));
+    setGuess("");
+  }, [guess, question, categories]);
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submitGuess();
+      }
+    },
+    [submitGuess]
+  );
+
+  if (!question) {
+    return <></>;
+  }
+
+  return (
+    <div
+      className={`font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 bg-gradient-to-bl from-black to-black transition-[--tw-gradient-from,_--tw-gradient-to] duration-[1000ms] ease-in-out ${
+        result && resultToBackgroundStyle(result)
+      }`}
+    >
+      <main className="flex flex-col gap-[32px] row-start-2 items-center ">
+        <div className="font-mono ">{question.question}</div>
+        <div className="text-6xl">{question.image}</div>
+
+        <input
+          type="text"
+          value={guess}
+          className="border-green-300 border-1 font-mono placeholder:italic"
+          placeholder="Answer"
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+        />
+        <div className="font-mono">
+          {points}
+          {result}
+        </div>
+        <SubmitScore score={points} submitScore={props.submitScore} />
+        <button
+          className="font-mono cursor-pointer"
+          onClick={() => setShowOptions((val) => !val)}
+        >{`${showOptions ? "Hide" : "Show"} categories`}</button>
+        {showOptions && (
+          <ol>
+            {categories.map((category, index) => (
+              <li key={index}>
+                <label className="font-mono">
+                  <input
+                    type="checkbox"
+                    checked={category.selected}
+                    className="m-1 "
+                    onChange={(event) =>
+                      setCategories((current) => [
+                        ...current.slice(0, index),
+                        { ...category, selected: event.target.checked },
+                        ...current.slice(index + 1),
+                      ])
+                    }
+                  />
+                  {category.title}
+                </label>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Link className="font-mono" href={"/leaderboard"}>
+          Leaderboard
+        </Link>
+      </main>
+    </div>
+  );
+}
+
+interface SubmitScoreProps {
+  score: number;
+  submitScore: (params: SubmitScoreParams) => Promise<void>;
+}
+
+function SubmitScore(props: SubmitScoreProps) {
+  const { score, submitScore } = props;
+
+  const [username, setUsername] = useState("");
+
+  return (
+    <form
+      action={() =>
+        submitScore({
+          score,
+          username,
+        })
+      }
+    >
+      <div className="flex gap-5">
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          name="username"
+          className="border-gray-500 border-1 font-mono placeholder:italic"
+        />
+        <SubmitButton />
+      </div>
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <>
+      <button
+        disabled={pending}
+        type="submit"
+        className="font-mono border-1 p-1 border-green-700 hover:bg-gray-900 transition-all hover:cursor-pointer disabled:border-green-900 disabled:text-gray-600 disabled:cursor-default"
+      >
+        Submit Score
+      </button>
+    </>
+  );
+}
