@@ -1,13 +1,20 @@
-
-'use server'
+"use server";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { revalidatePath } from "next/cache";
 
-const dynamoClient = DynamoDBDocumentClient.from(new DynamoDBClient({
-    region: 'eu-west-2'
-}));
+const dynamoClient = DynamoDBDocumentClient.from(
+  new DynamoDBClient({
+    region: "eu-west-2",
+  })
+);
+
+process.env.TABLE_NAME = "quiz-game-leaderboard";
 
 export interface SubmitScoreParams {
   username: string;
@@ -18,14 +25,20 @@ export async function getScores() {
   const result = await dynamoClient.send(
     new QueryCommand({
       TableName: process.env.TABLE_NAME,
-      KeyConditionExpression: "quiz",
+      KeyConditionExpression: "id = :id",
+      ExpressionAttributeValues: {
+        ":id": "quiz",
+      },
       Limit: 20,
+      ScanIndexForward: false,
     })
   );
 
-  return result.Items || [];
+  return (result.Items || []).map((item) => ({
+    username: item.username,
+    score: item.sort,
+  }));
 }
-
 
 export async function submitScore(params: SubmitScoreParams) {
   const { username, score } = params;
@@ -41,5 +54,5 @@ export async function submitScore(params: SubmitScoreParams) {
     })
   );
 
-  revalidatePath('/')
+  revalidatePath("/leaderboard");
 }

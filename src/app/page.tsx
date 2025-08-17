@@ -12,6 +12,12 @@ export interface Question {
   options?: string[];
 }
 
+interface Category {
+  title: string;
+  generator: () => Question;
+  selected: boolean;
+}
+
 function getRandomOptions(
   correctAnswer: string,
   allAnswers: string[],
@@ -77,10 +83,28 @@ function sum(): Question {
   };
 }
 
-const categories = [sum, flagToCapital, flag, capital];
-function getQuestion() {
-  return categories[randomInt(4)]();
-}
+const initialCategories: Category[] = [
+  {
+    title: "Sums",
+    generator: sum,
+    selected: true,
+  },
+  {
+    title: "Flags",
+    generator: flag,
+    selected: true,
+  },
+  {
+    title: "Capitals",
+    generator: capital,
+    selected: true,
+  },
+  {
+    title: "Capitals from Flags",
+    generator: flagToCapital,
+    selected: true,
+  },
+];
 
 function normalise(a: string) {
   // Ignore case and diacritics.
@@ -94,14 +118,32 @@ function sameString(a: string, b: string) {
   return normalise(a) === normalise(b);
 }
 
+function resultToBackgroundStyle(result?: string) {
+  if (!result) {
+    return "from-transparent to-transparent";
+  }
+  if (result.startsWith("✅")) {
+    return "from-gray-900 to-green-900";
+  } else {
+    return "from-gray-900 to-red-900";
+  }
+}
+
+function getQuestion(categories: Category[]) {
+  const selected = categories.filter(({ selected }) => selected);
+  return selected[randomInt(selected.length)].generator();
+}
+
 export default function Home() {
-  const [questionPair, setQuestionPair] = useState(getQuestion);
+  const [questionPair, setQuestionPair] = useState(() =>
+    getQuestion(initialCategories)
+  );
   const [points, setPoints] = useState(0);
   const [guess, setGuess] = useState<string>("");
-  const [username, setUsername] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<"✅" | "❌" | string | undefined>(
     undefined
   );
+  const [categories, setCategories] = useState(initialCategories);
 
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,9 +170,9 @@ export default function Home() {
       setResult(undefined);
     }, 2000);
 
-    setQuestionPair(getQuestion);
+    setQuestionPair(getQuestion(categories));
     setGuess("");
-  }, [guess, questionPair]);
+  }, [guess, questionPair, categories]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -143,10 +185,14 @@ export default function Home() {
   );
 
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <div
+      className={`font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 bg-gradient-to-bl from-black to-black transition-[--tw-gradient-from,_--tw-gradient-to] duration-[1000ms] ease-in-out ${
+        result && resultToBackgroundStyle(result)
+      }`}
+    >
       <main className="flex flex-col gap-[32px] row-start-2 items-center ">
         <div className="font-mono ">{questionPair.question}</div>
-        <div className="text-3xl">{questionPair.image}</div>
+        <div className="text-6xl">{questionPair.image}</div>
 
         <input
           type="text"
@@ -159,22 +205,59 @@ export default function Home() {
           {points}
           {result}
         </div>
-        <div className="flex gap-5">
-          <input
-            type="text"
-            value={username}
-            className="border-gray-500 border-1 font-mono"
-            onChange={(e) => setUsername(e.target.value)}
-          ></input>
-          <button
-            disabled={username === ""}
-            onClick={() => submitScore({ score: points, username: username! })}
-          >
-            Submit Score
-          </button>
-        </div>
+        <SubmitScore score={points} />
+        <ol>
+          {categories.map((category, index) => (
+            <li key={index}>
+              <label className="font-mono">
+                <input
+                  type="checkbox"
+                  checked={category.selected}
+                  className="m-1 "
+                  onChange={(event) =>
+                    setCategories((current) => [
+                      ...current.slice(0, index),
+                      { ...category, selected: event.target.checked },
+                      ...current.slice(index + 1),
+                    ])
+                  }
+                />
+                {category.title}
+              </label>
+            </li>
+          ))}
+        </ol>
         <Link href={"/leaderboard"}>Leaderboard</Link>
       </main>
+    </div>
+  );
+}
+
+interface SubmitScoreProps {
+  score: number;
+}
+
+function SubmitScore(props: SubmitScoreProps) {
+  const { score } = props;
+
+  const [username, setUsername] = useState<string>("");
+
+  return (
+    <div className="flex gap-5">
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        className="border-gray-500 border-1 font-mono placeholder:italic"
+        onChange={(e) => setUsername(e.target.value)}
+      ></input>
+      <button
+        disabled={username === ""}
+        className="font-mono border-1 p-1 border-green-700 hover:bg-gray-900 transition-all hover:cursor-pointer"
+        onClick={() => submitScore({ score, username: username! })}
+      >
+        Submit Score
+      </button>
     </div>
   );
 }

@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@property --tw-gradient-from {
+  syntax: '<color>';
+  initial-value: transparent;
+  inherits: false;
+}
+
+@property --tw-gradient-to {
+  syntax: '<color>';
+  initial-value: transparent;
+  inherits: false;
+}
