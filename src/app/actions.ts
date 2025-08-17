@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 
 const dynamoClient = DynamoDBDocumentClient.from(
   new DynamoDBClient({
-    region: "eu-west-2",
+    region: process.env.AWS_REGION,
   })
 );
 
