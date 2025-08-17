@@ -1,9 +1,9 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { submitScore } from "./actions";
 import data from "./countries.json";
+import {  useFormStatus } from "react-dom";
 
 export interface Question {
   question: string;
@@ -144,6 +144,7 @@ export default function Home() {
     undefined
   );
   const [categories, setCategories] = useState(initialCategories);
+  const [showOptions, setShowOptions] = useState(false);
 
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,37 +198,46 @@ export default function Home() {
         <input
           type="text"
           value={guess}
-          className="border-green-300 border-1 font-mono"
+          className="border-green-300 border-1 font-mono placeholder:italic"
+          placeholder="Answer"
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-        ></input>
+        />
         <div className="font-mono">
           {points}
           {result}
         </div>
         <SubmitScore score={points} />
-        <ol>
-          {categories.map((category, index) => (
-            <li key={index}>
-              <label className="font-mono">
-                <input
-                  type="checkbox"
-                  checked={category.selected}
-                  className="m-1 "
-                  onChange={(event) =>
-                    setCategories((current) => [
-                      ...current.slice(0, index),
-                      { ...category, selected: event.target.checked },
-                      ...current.slice(index + 1),
-                    ])
-                  }
-                />
-                {category.title}
-              </label>
-            </li>
-          ))}
-        </ol>
-        <Link href={"/leaderboard"}>Leaderboard</Link>
+        <button
+          className="font-mono cursor-pointer"
+          onClick={() => setShowOptions((val) => !val)}
+        >{`${showOptions ? "Hide" : "Show"} categories`}</button>
+        {showOptions && (
+          <ol>
+            {categories.map((category, index) => (
+              <li key={index}>
+                <label className="font-mono">
+                  <input
+                    type="checkbox"
+                    checked={category.selected}
+                    className="m-1 "
+                    onChange={(event) =>
+                      setCategories((current) => [
+                        ...current.slice(0, index),
+                        { ...category, selected: event.target.checked },
+                        ...current.slice(index + 1),
+                      ])
+                    }
+                  />
+                  {category.title}
+                </label>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Link className="font-mono" href={"/leaderboard"}>
+          Leaderboard
+        </Link>
       </main>
     </div>
   );
@@ -240,24 +250,44 @@ interface SubmitScoreProps {
 function SubmitScore(props: SubmitScoreProps) {
   const { score } = props;
 
-  const [username, setUsername] = useState<string>("");
+  const [username, setUsername] = useState("");
 
   return (
-    <div className="flex gap-5">
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        className="border-gray-500 border-1 font-mono placeholder:italic"
-        onChange={(e) => setUsername(e.target.value)}
-      ></input>
+    <form
+      action={() =>
+        submitScore({
+          score,
+          username,
+        })
+      }
+    >
+      <div className="flex gap-5">
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+          name="username"
+          className="border-gray-500 border-1 font-mono placeholder:italic"
+        />
+        <SubmitButton />
+      </div>
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <>
       <button
-        disabled={username === ""}
-        className="font-mono border-1 p-1 border-green-700 hover:bg-gray-900 transition-all hover:cursor-pointer"
-        onClick={() => submitScore({ score, username: username! })}
+        disabled={pending}
+        type="submit"
+        className="font-mono border-1 p-1 border-green-700 hover:bg-gray-900 transition-all hover:cursor-pointer disabled:border-green-900 disabled:text-gray-600 disabled:cursor-default"
       >
         Submit Score
       </button>
-    </div>
+    </>
   );
 }
