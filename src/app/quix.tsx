@@ -120,12 +120,12 @@ function sameString(a: string, b: string) {
 
 function resultToBackgroundStyle(result?: string) {
   if (!result) {
-    return "from-transparent to-transparent";
+    return "";
   }
   if (result.startsWith("✅")) {
-    return "from-gray-900 to-green-900";
+    return "to-[var(--success)]";
   } else {
-    return "from-gray-900 to-red-900";
+    return "to-[var(--fail)]";
   }
 }
 
@@ -200,7 +200,7 @@ export function Quiz(props: QuizProps) {
 
   return (
     <div
-      className={`font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 bg-gradient-to-bl from-black to-black transition-[--tw-gradient-from,_--tw-gradient-to] duration-[1000ms] ease-in-out ${
+      className={`font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 bg-gradient-to-bl from-[rgb(var(--background))] to-[rgb(var(--background))] transition-[--tw-gradient-from,_--tw-gradient-to] duration-[1000ms] ease-in-out ${
         result && resultToBackgroundStyle(result)
       }`}
     >

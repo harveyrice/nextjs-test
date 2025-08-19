@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --success: #05df72;
+  --fail: #ff6467;
 }
 
 @theme inline {
@@ -16,6 +18,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --success: #0d542b;
+    --fail: #82181a;
   }
 }
 
@@ -26,13 +30,13 @@ body {
 }
 
 @property --tw-gradient-from {
-  syntax: '<color>';
+  syntax: "<color>";
   initial-value: transparent;
   inherits: false;
 }
 
 @property --tw-gradient-to {
-  syntax: '<color>';
+  syntax: "<color>";
   initial-value: transparent;
   inherits: false;
 }
